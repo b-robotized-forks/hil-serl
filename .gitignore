@@ -1,0 +1,17 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.egg-info/
+build/
+
+# C extensions
+*.so
+
+# other
+.vscode
+*egg-info*
+*BACKUP*
+*BASE*
+*LOCAL*
+*REMOTE*
+*.orig*
+*.backup

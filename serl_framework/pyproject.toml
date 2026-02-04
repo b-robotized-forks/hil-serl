@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "serl-framework"
+version = "0.0.0"
+description = "ROS2-free robot-agnostic environments for HIL-SERL."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [{name = "Jennifer Buehler", email = "jennifer.e.buehler@gmail.com"}]
+dependencies = ["pyyaml"]
+
+[tool.setuptools]
+packages = ["serl_framework", "serl_framework.envs", "serl_framework.utils", "serl_framework.testing", "serl_framework.train"]

@@ -4,7 +4,6 @@ from typing import List, Optional
 import gymnasium as gym
 import imageio
 import numpy as np
-import tensorflow as tf
 
 # Take from
 # https://github.com/denisyarats/pytorch_sac/
@@ -83,6 +82,10 @@ class VideoRecorder(gym.Wrapper):
         self.frames = []
         self.goal_conditioned = goal_conditioned
 
+        # import TensorFlow lazily, so importing this module does not require
+        # TensorFlow. Inference-only environments that never record video can omit TensorFlow entirely.
+        import tensorflow as tf
+
         if not tf.io.gfile.exists(save_folder):
             tf.io.gfile.makedirs(save_folder)
 
@@ -157,6 +160,8 @@ class VideoRecorder(gym.Wrapper):
                     should_save = False
 
                 if should_save:
+                    import tensorflow as tf  # lazy: only needed when saving video
+
                     filename = "%08d.mp4" % (self.num_videos)
                     if self.save_prefix is not None and self.save_prefix != "":
                         filename = f"{self.save_prefix}_{filename}"

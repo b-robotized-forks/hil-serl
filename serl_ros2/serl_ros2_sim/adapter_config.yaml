@@ -1,0 +1,24 @@
+# RobotAdapter configuration for cube demo with Ursina.
+# These settings define the ROS2 topics the adapter subscribes to and publishes.
+
+# Camera names to subscribe to. Topics become: camera/<name>/image.
+# Ursina sim defaults to "front,wrist" cameras.
+cameras:
+  - front
+  - wrist
+
+# ApproximateTimeSynchronizer settings for state topics.
+sync_slop: 0.05
+sync_queue_size: 10
+
+# Set true if your robot publishes tcp_wrench and you need force/torque in obs.
+subscribe_wrench: false
+
+# Disable message_filters synchronization for simple sims (Ursina publishes async).
+do_synchronize: false
+
+# Frame ID for outgoing command_pose messages (Ursina sim default is base_link).
+frame_id: base_link
+
+# Timeout for waiting on ROS2 service availability.
+service_timeout_sec: 5.0

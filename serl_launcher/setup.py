@@ -9,11 +9,10 @@ setup(
     license="MIT",
     install_requires=[
         "zmq",
-        "typing",
         "typing_extensions",
         "opencv-python",
         "lz4",
-        "agentlace@git+https://github.com/youliangtan/agentlace.git@cf2c337c5e3694cdbfc14831b239bd657bc4894d",
+        "agentlace@git+https://github.com/JenniferBuehler/agentlace.git@d003c97002fdd317fd92f06c271d28b074c406d9",
     ],
     packages=find_packages(),
     zip_safe=False,

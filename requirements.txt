@@ -1,0 +1,32 @@
+# Dependencies for serl_launcher-based training runs.
+# Tested with Python 3.12 (expected to work on 3.10+).
+# JAX itself is installed separately (CPU or GPU variant) and must be 0.4.36;
+# newer JAX versions (tried up to 0.9) require code changes. The pins below
+# match that JAX version. Adjust CUDA/OS-specific bits to your stack.
+pyyaml
+setuptools
+jinja2
+typeguard
+gymnasium>=0.29.1
+numpy>=1.26.0
+flax==0.10.4
+distrax==0.1.5
+ml_collections>=0.1.1
+tqdm>=4.66.0
+chex==0.1.90
+optax==0.2.5
+orbax-checkpoint==0.11.5
+absl-py>=1.4.0
+scipy>=1.12.0
+wandb>=0.16.0
+tensorflow>=2.20.0
+tensorflow_probability>=0.24.0
+einops>=0.7.0
+imageio>=2.34.0
+tf-keras>=2.17.0
+pynput>=1.7.7
+natsort>=8.4.0
+matplotlib>=3.8.0
+cloudpickle
+opencv-python
+pyspacemouse

@@ -1,0 +1,20 @@
+# Example adapter configuration for serl_ros2.
+# Copy and customize this file for your robot setup.
+
+# Camera names to subscribe to. Topics will be: camera/<name>/image
+cameras:
+  - front
+  - wrist
+
+# ApproximateTimeSynchronizer settings
+sync_slop: 0.05         # Time tolerance in seconds (50ms)
+sync_queue_size: 10     # Queue depth for synchronizer
+
+# Optional subscriptions
+subscribe_wrench: true  # Subscribe to tcp_wrench topic
+
+# Command settings
+frame_id: base_link     # Frame ID for outgoing pose commands
+
+# Service settings
+service_timeout_sec: 5.0  # Timeout for service calls

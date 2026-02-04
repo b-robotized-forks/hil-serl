@@ -230,11 +230,15 @@ def make_batch_augmentation_func(image_keys) -> callable:
     return augment_batch
 
 
-def make_trainer_config(port_number: int = 5588, broadcast_port: int = 5589):
+def make_trainer_config(
+    port_number: int = 5588,
+    broadcast_port: int = 5589,
+    request_types: list[str] | None = None,
+):
     return TrainerConfig(
         port_number=port_number,
         broadcast_port=broadcast_port,
-        request_types=["send-stats"],
+        request_types=request_types or ["send-stats"],
     )
 
 

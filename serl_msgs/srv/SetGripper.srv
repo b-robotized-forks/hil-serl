@@ -1,0 +1,8 @@
+uint8 MODE_OPEN=0
+uint8 MODE_CLOSE=1
+uint8 MODE_POSITION=2
+uint8 mode                             # Use MODE_* constants
+float32 position                       # used if mode==2, normalized [0,1]
+---
+bool ok
+string message
