@@ -2,6 +2,7 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Static Badge](https://img.shields.io/badge/Project-Page-a)](https://hil-serl.github.io/)
+[![Tests](https://github.com/b-robotized-forks/hil-serl/actions/workflows/unit-tests.yml/badge.svg?branch=ros2)](https://github.com/b-robotized-forks/hil-serl/actions/workflows/unit-tests.yml)
 
 This is a fork of [rail-berkeley/hil-serl](https://github.com/rail-berkeley/hil-serl), a framework
 for training precise robotic manipulation policies with human-in-the-loop reinforcement learning

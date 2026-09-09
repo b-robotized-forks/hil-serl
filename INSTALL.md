@@ -45,6 +45,13 @@ pip install -e serl_framework
 `requirements.txt` pins the JAX ecosystem packages (flax, optax, orbax-checkpoint, ...) to
 versions compatible with JAX 0.4.36.
 
+> [!NOTE]
+> Installing `serl_launcher` automatically pulls [agentlace](https://github.com/youliangtan/agentlace)
+> (the actor/learner communication layer) from GitHub, pinned to a commit of a fork. The fork is
+> identical to the commit the original hil-serl pins, plus a one-line fix that removes an obsolete
+> dependency breaking installation on modern Python. No separate install step is needed, but this
+> pip step does clone from GitHub.
+
 ## 4. Verify the install
 
 Check JAX/Flax and the available devices (should print `0.4.36`):
