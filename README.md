@@ -44,6 +44,29 @@ where policies performed cable insertion tasks.
 > It still needs some grooming before it can be published, and it would have to be published as a
 > fork of the `aic` repository itself rather than as part of this one.
 
+## Prerequisites
+
+Software:
+
+- Linux (tested on Ubuntu 24.04).
+- ROS 2, tested with **Jazzy** and **Kilted**. Only `serl_ros2` and `serl_msgs` touch ROS, the
+  rest of the stack is ROS-free.
+- Python 3.12 (3.10 is also covered by CI) with **JAX 0.4.36** (see the note below).
+
+Hardware:
+
+- **Learner**: an NVIDIA GPU with CUDA 12 support. A single mid-range GPU is sufficient, we
+  trained on one NVIDIA L4 (in a cloud instance). The learner can also run on a separate machine,
+  see [running the learner remotely](docs/robot_walkthrough.md#running-the-learner-remotely).
+- **Actor**: no GPU needed, policy inference runs fine on CPU. On Intel hybrid CPUs see the
+  [performance notes](docs/robot_walkthrough.md#ros2-timer-jitter-on-intel-hybrid-cpus).
+- **Teleop device** for demonstrations and interventions: a SpaceMouse is strongly recommended,
+  keyboard and gamepad are also supported.
+- **Robot**: any robot with a ROS 2 driver that can track Cartesian TCP pose targets (e.g. an
+  impedance or admittance controller), plus one or more cameras. See
+  [docs/robot_integration.md](docs/robot_integration.md). For the simulated demo, no hardware is
+  required at all.
+
 ## Installation
 
 See [INSTALL.md](INSTALL.md) for the full setup (Python environment, JAX, core packages,
@@ -51,7 +74,7 @@ smoke tests, ROS2 workspace).
 
 > [!IMPORTANT]
 > This fork requires **JAX 0.4.36**. The upstream 0.4.35 breaks on Python 3.12 / Ubuntu 24.04,
-> and newer JAX versions do not work yet (tried with 0.9, upgrading requires code changes).
+> and newer JAX versions do not work yet (tried with 0.9, upgrading requires code changes in serl_launcher).
 
 ## Quickstart: simulated cube demo (no hardware)
 
@@ -61,7 +84,7 @@ the robot TCP and is trained to move to the blue cube in a deliberately minimal
 adapter, teleop, data collection, the reward classifier, and the RLPD actor/learner loop all run
 exactly as they would on hardware.
 
-![Ursina cube demo](docs/media/ursina_cube_demo.gif)
+![Ursina cube demo - training process](docs/media/ursina_cube_demo.gif)
 
 The tutorial in [examples/experiments/cube_demo_ros2/README.md](examples/experiments/cube_demo_ros2/README.md)
 walks through the full pipeline on this example: start the sim, teleoperate,
