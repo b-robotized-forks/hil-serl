@@ -1,4 +1,4 @@
-"""Tests for the base training config and experiment YAML loading."""
+"""Tests for the base training config and task config YAML loading."""
 
 from pathlib import Path
 
@@ -7,7 +7,7 @@ import pytest
 from serl_framework.train.config import (
     DefaultTrainingConfig,
     build_train_config,
-    load_experiment_config,
+    load_task_config,
 )
 
 
@@ -20,9 +20,9 @@ def _write_yaml(path: Path, content: str) -> str:
     return str(path)
 
 
-def test_load_experiment_config_skips_adapter_section(tmp_path: Path) -> None:
+def test_load_task_config_skips_adapter_section(tmp_path: Path) -> None:
     path = _write_yaml(tmp_path / "exp.yaml", "batch_size: 32\nadapter:\n  cameras: [front]\n")
-    overrides = load_experiment_config(path)
+    overrides = load_task_config(path)
     assert overrides == {"batch_size": 32}
 
 
@@ -41,7 +41,7 @@ def test_build_train_config_priority_defaults_yaml_cli(tmp_path: Path) -> None:
 
     assert config.batch_size == 32  # YAML beats the class default (64)
     assert config.discount == 0.9  # CLI override beats the YAML (0.5)
-    assert config.experiment_config_path == path
+    assert config.task_config_path == path
 
 
 def test_build_train_config_without_yaml_uses_defaults() -> None:

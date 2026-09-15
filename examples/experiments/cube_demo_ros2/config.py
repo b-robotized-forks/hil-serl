@@ -1,5 +1,5 @@
 """
-Cube demo experiment configuration for the ROS2 RobotAdapter path.
+Cube demo task configuration for the ROS2 RobotAdapter path.
 
 This experiment keeps the task intentionally simple: move the TCP to a fixed
 target pose above a cube on the table. It uses the serl_framework RobotEnv and

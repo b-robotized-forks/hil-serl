@@ -24,7 +24,6 @@ python -m serl_framework.train.train_rlpd --help
 python -m serl_framework.train.record_demos --help
 python -m serl_framework.train.record_success_fail --help
 python -m serl_framework.train.train_reward_classifier --help
-python -m serl_framework.train.stream_classifier_prob --help
 ```
 
 They additionally require the RL stack, which is not part of this package's base dependencies.

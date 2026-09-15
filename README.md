@@ -4,30 +4,30 @@
 [![Static Badge](https://img.shields.io/badge/Project-Page-a)](https://hil-serl.github.io/)
 [![Tests](https://github.com/b-robotized-forks/hil-serl/actions/workflows/unit-tests.yml/badge.svg?branch=ros2)](https://github.com/b-robotized-forks/hil-serl/actions/workflows/unit-tests.yml)
 
-This is a fork of [rail-berkeley/hil-serl](https://github.com/rail-berkeley/hil-serl), a framework
-for training precise robotic manipulation policies with human-in-the-loop reinforcement learning
+A fork of [rail-berkeley/hil-serl](https://github.com/rail-berkeley/hil-serl), a framework for
+training precise robotic manipulation policies with human-in-the-loop reinforcement learning
 ([paper](https://arxiv.org/abs/2410.21845), [project page](https://hil-serl.github.io/)).
 
-The fork adds ROS2 support and a robot-agnostic architecture that also works in simulation.
-The core algorithm (`serl_launcher`) is kept almost unchanged.
-The ROS1/Franka-specific `serl_robot_infra` stack and the Franka example tasks were removed.
-They remain available in the [original repository](https://github.com/rail-berkeley/hil-serl).
+This fork adds ROS2 support and a robot-agnostic architecture that also works in simulation.
+The learning core (`serl_launcher`) is almost unchanged. The ROS1/Franka-specific parts were
+removed and remain available in the original repository.
+See [CHANGES_FORK.md](CHANGES_FORK.md) for the full list of changes.
 
 ## What this fork adds
 
-- A robot-agnostic framework layer (`serl_framework`): ROS-free `RobotAdapter` and `TeleopAdapter`
-  interfaces plus a generic `RobotEnv`. The RL code never talks to a specific robot or middleware.
-- A ROS2 implementation of that interface (`serl_ros2`, `serl_msgs`). Supporting a new robot means
-  publishing a handful of topics and providing a few services.
-- A simulation-first workflow: a small [ursina](https://www.ursinaengine.org/) based simulator runs
-  the full pipeline (teleop, data collection, classifier, training) without any hardware.
-- Improved training scripts (moved from `examples/` into `serl_framework.train`): resumable
-  training, CSV metrics logging, actor-side checkpoints, and more.
-- Improved data collection: incremental demo saving with resume, config snapshots next to
-  recordings, better success/failure labeling, and a live classifier probability monitor.
-- A teleop stack for SpaceMouse, keyboard, and gamepad, including a pose-to-Joy bridge and a
-  teleop mux (see [serl_ros2/README.md](serl_ros2/README.md)).
-- Python 3.12 support and a unit test suite.
+- A robot-agnostic layer (`serl_framework`): ROS-free `RobotAdapter` and `TeleopAdapter`
+  interfaces plus a generic `RobotEnv`.
+- A ROS2 implementation of that interface (`serl_ros2`, `serl_msgs`). A new robot needs a handful
+  of topics and a few services.
+- A simulation-first workflow: the bundled [ursina](https://www.ursinaengine.org/) simulator runs
+  the full pipeline without hardware.
+- Improved training scripts (`serl_framework.train`): resumable training, CSV metrics,
+  actor-side checkpoints.
+- Improved data collection: incremental demo saving with resume, config snapshots, and better
+  success/failure labeling.
+- Teleop for SpaceMouse, keyboard, and gamepad, including a pose-to-Joy bridge
+  (see [serl_ros2/README.md](serl_ros2/README.md)).
+- Python 3.12 support, a unit test suite, and CI.
 
 This code was used in the [AI for Industry Challenge](https://www.intrinsic.ai/events/ai-for-industry-challenge) (team b-robotized),
 where policies performed cable insertion tasks.
@@ -49,47 +49,43 @@ where policies performed cable insertion tasks.
 Software:
 
 - Linux (tested on Ubuntu 24.04).
-- ROS 2, tested with **Jazzy** and **Kilted**. Only `serl_ros2` and `serl_msgs` touch ROS, the
-  rest of the stack is ROS-free.
+- ROS 2, tested with **Jazzy** and **Kilted**. Only `serl_ros2` and `serl_msgs` touch ROS.
 - Python 3.12 (3.10 is also covered by CI) with **JAX 0.4.36** (see the note below).
 
 Hardware:
 
-- **Learner**: an NVIDIA GPU with CUDA 12 support. A single mid-range GPU is sufficient, we
-  trained on one NVIDIA L4 (in a cloud instance). The learner can also run on a separate machine,
-  see [running the learner remotely](docs/robot_walkthrough.md#running-the-learner-remotely).
-- **Actor**: no GPU needed, policy inference runs fine on CPU. On Intel hybrid CPUs see the
-  [performance notes](docs/robot_walkthrough.md#ros2-timer-jitter-on-intel-hybrid-cpus).
-- **Teleop device** for demonstrations and interventions: a SpaceMouse is strongly recommended,
-  keyboard and gamepad are also supported.
+- **Learner**: an NVIDIA GPU (CUDA 12). One mid-range GPU is enough, we trained on a single
+  NVIDIA L4 in the cloud
+  ([running the learner remotely](docs/task_walkthrough.md#running-the-learner-remotely)).
+- **Actor**: no GPU needed, inference runs on CPU. On Intel hybrid CPUs see the
+  [performance notes](docs/task_walkthrough.md#ros2-timer-jitter-on-intel-hybrid-cpus).
+- **Teleop device**: a SpaceMouse is strongly recommended, keyboard and gamepad also work.
 - **Robot**: any robot with a ROS 2 driver that can track Cartesian TCP pose targets (e.g. an
-  impedance or admittance controller), plus one or more cameras. See
-  [docs/robot_integration.md](docs/robot_integration.md). For the simulated demo, no hardware is
-  required at all.
+  impedance or admittance controller), plus one or more cameras
+  (see [docs/robot_integration.md](docs/robot_integration.md)). The simulated demo needs no
+  hardware at all.
 
 ## Installation
 
-See [INSTALL.md](INSTALL.md) for the full setup (Python environment, JAX, core packages,
-smoke tests, ROS2 workspace).
+See [INSTALL.md](INSTALL.md).
 
 > [!IMPORTANT]
 > This fork requires **JAX 0.4.36**. The upstream 0.4.35 breaks on Python 3.12 / Ubuntu 24.04,
-> and newer JAX versions do not work yet (tried with 0.9, upgrading requires code changes in serl_launcher).
+> and newer JAX versions do not work yet (tried with 0.9, upgrading requires code changes in
+> serl_launcher).
 
 ## Quickstart: simulated cube demo (no hardware)
 
 This is not a robot example. It is a smoke test for the whole framework: a red ball stands in for
 the robot TCP and is trained to move to the blue cube in a deliberately minimal
-[ursina](https://www.ursinaengine.org/) simulator. Everything is real except the robot: the ROS2
-adapter, teleop, data collection, the reward classifier, and the RLPD actor/learner loop all run
-exactly as they would on hardware.
+[ursina](https://www.ursinaengine.org/) simulator. Everything else is real: the ROS2 adapter,
+teleop, data collection, the reward classifier, and the RLPD actor/learner loop run exactly as
+they would on hardware.
 
 ![Ursina cube demo - training process](docs/media/ursina_cube_demo.gif)
 
 The tutorial in [examples/experiments/cube_demo_ros2/README.md](examples/experiments/cube_demo_ros2/README.md)
-walks through the full pipeline on this example: start the sim, teleoperate,
-optionally train a reward classifier, record demonstrations, and run actor/learner training.
-The short version:
+walks through the full pipeline. The short version:
 
 ```bash
 # Terminal 1: the simulated "robot"
@@ -105,17 +101,16 @@ bash run_learner.sh ../../../demo_data/<your_demo>.pkl
 bash run_actor.sh --ip localhost
 ```
 
-The training scripts find experiment configs through a mapping module (`--config_mapping`,
-default `experiments.mappings`). For the bundled examples this module lives in `examples/`,
-which is why the commands above set `PYTHONPATH=examples`. For your own experiments, point
-`--config_mapping` at your own package instead.
+The training scripts find task configs through a mapping module (`--config_mapping`,
+default `experiments.mappings`). For the bundled examples this module lives in `examples/`, hence
+`PYTHONPATH=examples`. For your own experiments, point `--config_mapping` at your own package.
 
 ## Architecture
 
-The fork removes the original HTTP/Flask robot bridge and keeps the robot-agnostic core
-(`serl_launcher`). The Gymnasium env (`RobotEnv`) talks to a **RobotAdapter**, a plain Python
-interface that does not know about any middleware. The ROS2 implementation of that adapter
-(`serl_ros2`) is the only component that talks ROS2:
+The fork replaces the original HTTP/Flask robot bridge with a **RobotAdapter**: a plain Python
+interface between the Gymnasium env and the robot. The ROS2 implementation of that adapter
+(`serl_ros2`) is the only component that talks ROS2, so the learning stack stays robot- and
+middleware-agnostic:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -143,51 +138,33 @@ interface that does not know about any middleware. The ROS2 implementation of th
                                        └──────────────────────┘
 ```
 
-- Env and adapter run in the same process. The env calls adapter methods to get the latest
-  observation snapshot or send commands. The provided ROS2 adapter spins ROS2 internally, so user code never
-  calls `rclpy.spin*()`.
-- The adapter publishes pose targets to the robot and subscribes to its sensors,
-  buffering and time-aligning state and image streams.
-- Teleop input for interventions comes in through the same adapter, backed by a device-agnostic
-  `TeleopAdapter`.
-
-The actor and learner share nothing but the AgentLace connection, so the learner can run on any
-machine with a GPU, including a cloud instance. The actor machine only needs to reach the
-learner's two AgentLace ports (5588 for requests and data upload, 5589 for the weight broadcast).
-Run this over a VPN or another private network: the ZMQ connection is unauthenticated and must not
-be exposed publicly. See the
-[remote learner section in the walkthrough](docs/robot_walkthrough.md#running-the-learner-remotely)
-for the practical steps.
-
-How to connect a new robot, including the exact topics, services, and observation fields it has
-to provide, is described in [docs/robot_integration.md](docs/robot_integration.md).
-The original ROS1 + Flask/HTTP architecture is documented in the
-[original repository](https://github.com/rail-berkeley/hil-serl).
+The actor and learner run as separate processes connected only by AgentLace, so the learner can
+live on any GPU machine, including a cloud instance. Details on the adapter design, state
+synchronization, and the distributed setup are in [docs/architecture.md](docs/architecture.md).
 
 ## Code structure
 
 | Directory | Description |
 | --- | --- |
-| [serl_launcher](serl_launcher) | Core HIL-SERL algorithm (agents, networks, replay buffer, reward classifier), almost unchanged from upstream |
+| [serl_launcher](serl_launcher) | Learning core (agents, networks, replay buffer, reward classifier), almost unchanged from upstream |
 | [serl_framework](serl_framework) | ROS-free robot-agnostic layer: adapter interfaces, `RobotEnv`, wrappers, utilities |
-| [serl_framework/train](serl_framework/serl_framework/train) | Training entry points: `train_rlpd`, `record_demos`, `record_success_fail`, `train_reward_classifier`, `stream_classifier_prob` (much of this moved from the `experiments` directory in the upstream repository)|
-| [serl_ros2](serl_ros2) | ROS2 implementation of the robot adapter, teleop nodes, and the ursina simulator |
-| [serl_msgs](serl_msgs) | ROS2 service definitions (`SetGripper`, `ResetRobot`, `SetCompliance`) |
-| [examples](examples) | Example experiment configs (currently the simulated cube demo) |
-| [docs](docs) | Training walkthrough, robot integration guide, and media |
+| [serl_framework/train](serl_framework/serl_framework/train) | Training entry points (`train_rlpd`, `record_demos`, ...), moved here from upstream's `examples/` |
+| [serl_ros2](serl_ros2) | ROS2 adapter implementation, teleop nodes, ursina simulator |
+| [serl_msgs](serl_msgs) | ROS2 service definitions |
+| [examples](examples) | Example task configs (currently the simulated cube demo) |
+| [docs](docs) | Guides and media |
 
-## Training on your own robot
+## Using it on your own robot and task
 
-- [docs/robot_integration.md](docs/robot_integration.md): how to connect a new robot, with the
-  full topic and service contract and verification steps.
-- [docs/robot_walkthrough.md](docs/robot_walkthrough.md): a step-by-step guide through the full
-  training pipeline (configuration, reward classifier, demonstrations, training, evaluation),
-  including performance troubleshooting.
-- [docs/training_recommendations.md](docs/training_recommendations.md): how to operate a training
-  run well: demonstration counts, the three-phase intervention protocol, intervention style,
-  which metrics to watch, and how to evaluate checkpoints.
-- [serl_framework/README.md](serl_framework/README.md) and [serl_ros2/README.md](serl_ros2/README.md):
-  package details, adapter usage, teleop devices, and configuration.
+1. [docs/robot_integration.md](docs/robot_integration.md): connect your robot (topic/service
+   contract, verification).
+2. [docs/task_walkthrough.md](docs/task_walkthrough.md): set up and train a new task, starting
+   with the teleop check, through task design, data collection, training, and evaluation.
+3. [docs/training_recommendations.md](docs/training_recommendations.md): how to operate a
+   training run well (demos, the intervention protocol, metrics, checkpoint evaluation).
+
+Package details live in [serl_framework/README.md](serl_framework/README.md) and
+[serl_ros2/README.md](serl_ros2/README.md).
 
 ## Known limitations / future work
 
@@ -196,11 +173,10 @@ The original ROS1 + Flask/HTTP architecture is documented in the
 - The control loop publishes pose commands without an execution feedback channel. There is no
   built-in confirmation that a command was accepted or tracked.
 - Episode horizon timeouts are reported as terminal (`RobotEnv.step()` folds the
-  `max_episode_length` timeout into `done` instead of setting `truncated`), a behavior inherited
-  from the original code base. The value target then treats the timeout state as final and does
-  not bootstrap. For sparse rewards and short horizons this has little practical effect, but it
-  deviates from Gymnasium time-limit semantics and matters for long horizons or dense rewards.
-  Changing it requires an audit of everything that consumes the `dones`/`masks` fields.
+  `max_episode_length` timeout into `done` instead of setting `truncated`), inherited from the
+  original code base. Harmless for sparse rewards and short horizons, but it deviates from
+  Gymnasium time-limit semantics and matters for long horizons or dense rewards. Changing it
+  requires an audit of everything that consumes the `dones`/`masks` fields.
 - Dual-arm setups are not yet addressed by the ROS2 adapter design.
 - The BC and HG-DAgger baseline scripts were not ported. See the
   [original repository](https://github.com/rail-berkeley/hil-serl) for those.

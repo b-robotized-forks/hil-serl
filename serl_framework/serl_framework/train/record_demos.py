@@ -3,10 +3,25 @@
 Adapted from examples/record_demos.py of the original hil-serl repository
 (rail-berkeley/hil-serl); the core recording loop is the original authors' work.
 
-Episodes are driven via teleop intervention; only successful episodes are kept.
-Progress is saved incrementally after every accepted demo, and a previous
-session can be continued with --resume. The experiment YAML in effect is
-snapshotted next to the output pkl so recordings stay reproducible.
+Episodes are driven via teleop intervention; only episodes ending with success
+(info["succeed"], for classifier-based tasks decided by the classifier
+threshold) are kept. Results land in ./demo_data.
+
+Robustness and bookkeeping:
+  - Progress is saved incrementally after every accepted demo
+    (<exp>_demos_<run_name|incremental>_incremental.pkl), so a crash or a
+    simulator restart loses nothing.
+  - --resume <pkl> reloads a previous recording and continues counting.
+    --successes_needed is the total, not the remainder.
+  - --run_name replaces the timestamp in the final filename with a readable
+    identifier.
+  - The task config YAML in effect is snapshotted next to the output pkl
+    (same stem, .yaml extension) so recordings stay reproducible.
+  - --episode_length overrides the episode length for this run. --config and
+    --teleop override the task config YAML and teleop device.
+
+For a classifier-based task, train the classifier first: this script refuses
+to start without a classifier checkpoint when classifier_keys are configured.
 """
 
 import copy
@@ -22,14 +37,14 @@ from tqdm import tqdm
 from serl_framework.train.classifier_guard import ensure_classifier_checkpoint_exists
 from serl_framework.train.config import build_train_config
 from serl_framework.train.mappings import load_config_mapping
-from serl_framework.train.script_utils import override_episode_length, save_experiment_config_snapshot
+from serl_framework.train.script_utils import override_episode_length, save_task_config_snapshot
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("exp_name", None, "Name of experiment corresponding to folder.")
 flags.DEFINE_string(
     "config_mapping",
     "experiments.mappings",
-    "Dotted module path (optionally ':ATTRIBUTE') exporting the experiment config "
+    "Dotted module path (optionally ':ATTRIBUTE') exporting the task config "
     "mapping. The module must be importable, e.g. PYTHONPATH=examples for the "
     "bundled experiments.",
 )
@@ -42,7 +57,7 @@ flags.DEFINE_integer(
 flags.DEFINE_string(
     "config",
     None,
-    "Path to an experiment YAML. Overrides the default path from TrainConfig.",
+    "Path to a task config YAML. Overrides the default path from TrainConfig.",
 )
 flags.DEFINE_string(
     "teleop",
@@ -161,7 +176,7 @@ def main(_):
                     incremental_path = f"./demo_data/{FLAGS.exp_name}_demos_{run_suffix}_incremental.pkl"
                     with open(incremental_path, "wb") as f:
                         pkl.dump(transitions, f)
-                    save_experiment_config_snapshot(config, incremental_path)
+                    save_task_config_snapshot(config, incremental_path)
                 trajectory = []
                 returns = 0
                 obs, info = env.reset()
@@ -176,7 +191,7 @@ def main(_):
         with open(file_name, "wb") as f:
             pkl.dump(transitions, f)
             print(f"saved {success_needed} demos to {file_name}")
-        save_experiment_config_snapshot(config, file_name)
+        save_task_config_snapshot(config, file_name)
     finally:
         env.close()
 

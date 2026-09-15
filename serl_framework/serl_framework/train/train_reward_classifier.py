@@ -6,6 +6,19 @@ Adapted from examples/train_reward_classifier.py of the original hil-serl reposi
 Loads success and failure pkl files (as produced by record_success_fail.py),
 trains a sigmoid classifier on the configured image keys, and saves the
 checkpoint to classifier_ckpt/ in the current working directory.
+
+Dataset selection:
+  - By default, success and failure files are found via the globs
+    classifier_data/*success*.pkl and classifier_data/*failure*.pkl.
+  - --success_glob / --failure_glob (repeatable) select other files. Selected
+    paths are deduplicated, globs without matches print a warning, and a file
+    matching both classes is rejected.
+
+Classifier inputs:
+  - The image keys come from the task config (classifier_keys), or from
+    repeatable --classifier_key overrides.
+  - --num_epochs and --batch_size control the training run. Batches sample
+    positives and negatives 50/50.
 """
 
 import glob
@@ -33,7 +46,7 @@ flags.DEFINE_string("exp_name", None, "Name of experiment corresponding to folde
 flags.DEFINE_string(
     "config_mapping",
     "experiments.mappings",
-    "Dotted module path (optionally ':ATTRIBUTE') exporting the experiment config "
+    "Dotted module path (optionally ':ATTRIBUTE') exporting the task config "
     "mapping. The module must be importable, e.g. PYTHONPATH=examples for the "
     "bundled experiments.",
 )
@@ -42,7 +55,7 @@ flags.DEFINE_integer("batch_size", 256, "Batch size.")
 flags.DEFINE_string(
     "config",
     None,
-    "Path to an experiment YAML. Overrides the default path from TrainConfig.",
+    "Path to a task config YAML. Overrides the default path from TrainConfig.",
 )
 flags.DEFINE_multi_string(
     "classifier_key",
@@ -95,7 +108,7 @@ def main(_):
         config.classifier_keys = list(FLAGS.classifier_key)
     if not config.classifier_keys:
         raise ValueError(
-            "classifier_keys is empty. Set classifier_keys in the experiment YAML "
+            "classifier_keys is empty. Set classifier_keys in the task config YAML "
             "or pass --classifier_key=<image_key>."
         )
     print(f"classifier keys: {config.classifier_keys}")

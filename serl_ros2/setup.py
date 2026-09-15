@@ -12,7 +12,6 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
         ("share/" + package_name + "/config", glob("config/*.yaml")),
-        ("share/" + package_name + "/launch", glob("launch/*.py")),
     ],
     install_requires=["setuptools", "numpy", "pyyaml", "serl-framework"],
     zip_safe=True,
@@ -24,7 +23,7 @@ setup(
     entry_points={
         "console_scripts": [
             "serl_ros2_smoke=serl_ros2.smoke:main",
-            "joy_mux=serl_ros2.joy_mux:main",
+            "teleop_check=serl_ros2.teleop_check:main",
             "keyboard_joy=serl_ros2.keyboard_joy:main",
             "pose_to_joy=serl_ros2.pose_to_joy:main",
         ],

@@ -1,4 +1,4 @@
-"""Tests for the experiment config-mapping helpers."""
+"""Tests for the task config-mapping helpers."""
 
 import sys
 
@@ -7,7 +7,7 @@ import pytest
 from serl_framework.train.mappings import (
     LazyConfigMapping,
     load_config_mapping,
-    resolve_experiment_config_class,
+    resolve_task_config_class,
 )
 
 
@@ -65,6 +65,6 @@ def test_load_config_mapping_missing_attribute(module_dir) -> None:
         load_config_mapping("mapping_fixture_empty")
 
 
-def test_resolve_experiment_config_class_unknown_name_lists_known() -> None:
+def test_resolve_task_config_class_unknown_name_lists_known() -> None:
     with pytest.raises(KeyError, match="cube_demo"):
-        resolve_experiment_config_class({"cube_demo": object}, "typo_name")
+        resolve_task_config_class({"cube_demo": object}, "typo_name")

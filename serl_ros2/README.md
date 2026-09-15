@@ -96,7 +96,7 @@ Teleop in the ROS2 integration is Joy-driven end-to-end:
 - `TeleopIntervention` consumes adapter output and injects intervention actions
 
 Frame routing is also Joy-driven: `TeleopIntervention` infers base-vs-tcp from
-`Joy.header.frame_id`. Keep publisher frame ids consistent with experiment config
+`Joy.header.frame_id`. Keep publisher frame ids consistent with task config
 (`teleop_base_frame_id` / `teleop_tcp_frame_id`).
 
 This package provides `JoyTeleopAdapter`, a `TeleopAdapter` subclass that subscribes
@@ -124,7 +124,7 @@ For simulation setups, `RobotEnv.go_to_reset()` can also call optional
 | buttons[1] | Gripper open |
 | header.frame_id | Teleop source frame |
 
-Usage in your experiment config:
+Usage in your task config:
 
 ```python
 from serl_ros2.joy_teleop_adapter import JoyTeleopAdapter
@@ -138,7 +138,7 @@ adapter.start()
 ### SpaceMouse (Direct Device)
 
 Direct SpaceMouse input is provided by `serl_framework.SpaceMouseTeleop`
-(not by this package's Joy adapter). In experiment configs, this is typically:
+(not by this package's Joy adapter). In task configs, this is typically:
 
 ```python
 use_teleop = True
@@ -151,7 +151,7 @@ between `tcp` and `base` frame. Individual button presses (gripper open/close)
 are suppressed during the combo to avoid false triggers.
 
 **Axis mapping:** SpaceMouse axes can be remapped, inverted, and swapped per
-frame via `spacemouse_axis_mapping` in `experiment_config.yaml`:
+frame via `spacemouse_axis_mapping` in `task_config.yaml`:
 
 ```yaml
 spacemouse_axis_mapping:
@@ -208,7 +208,7 @@ frame. The active frame is printed to the console on each toggle.
 | Toggle frame | TAB | tcp <-> base |
 
 **Axis mapping:** Key-to-axis assignments can be remapped per frame via
-`keyboard_axis_mapping` in `experiment_config.yaml`:
+`keyboard_axis_mapping` in `task_config.yaml`:
 
 ```yaml
 keyboard_axis_mapping:
@@ -360,59 +360,6 @@ If your marker menu (or other UI) publishes gripper open/close events on
 > `TeleopIntervention`: `"joy"` is interpreted as TCP-frame commands.
 > If you need a different frame id, use a small relay node that rewrites
 > `Joy.header.frame_id` before forwarding to `teleop_joy`.
-
-### Multiple Devices (`joy_mux`)
-
-To use multiple teleop sources at once (e.g. RViz marker via `pose_to_joy`,
-keyboard, and SpaceMouse via `joy_node`) while ensuring only one active source
-drives commands at a time, use `joy_mux`.
-
-`joy_mux` selects the source currently outside deadzone (or pressing buttons)
-and republishes it to a single output topic (`teleop_joy` by default).
-
-Example launch:
-
-```bash
-ros2 launch serl_ros2 teleop_mux.launch.py
-```
-
-This starts:
-- `pose_to_joy` -> `teleop_joy_pose`
-- `joy_node` -> `teleop_joy_spacemouse`
-- `keyboard_joy` -> `teleop_joy_keyboard`
-- `joy_mux` -> `teleop_joy`
-
-By default, all sources publish/resolve to TCP frame. To force all sources to
-use one frame explicitly, use:
-
-```bash
-# Force all teleop sources to TCP
-ros2 launch serl_ros2 teleop_mux.launch.py frame_id_all:=tcp
-
-# Force all teleop sources to BASE
-ros2 launch serl_ros2 teleop_mux.launch.py frame_id_all:=base
-```
-
-`frame_id_all` overrides `pose_output_command_frame`, `keyboard_frame_id`,
-and the mux override used for `joy_node` input.
-
-Disable only `joy_node` (for example when no joystick/spacemouse device is connected):
-
-```bash
-ros2 launch serl_ros2 teleop_mux.launch.py \
-  enable_joy:=false
-```
-
-`enable_joy_node` is kept as a legacy alias for `enable_joy`.
-
-`joy_mux` supports per-source axis mapping and per-source axis scale. This lets
-you correct device-specific axes (swap/invert) before arbitration, so you can
-match SpaceMouse-like behavior even when the device arrives through `joy_node`.
-
-With the provided launch defaults, `pose_to_joy` is automatically disarmed when
-another source is selected by `joy_mux`. It only re-arms on the next meaningful
-marker target move event, which avoids snap-back to stale marker targets after
-switching to another teleop device.
 
 ### Axis Remapping
 

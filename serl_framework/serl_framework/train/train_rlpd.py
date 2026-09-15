@@ -5,10 +5,44 @@ Adapted from examples/train_rlpd.py of the original hil-serl repository
 (rail-berkeley/hil-serl); the core actor/learner loop is the original authors' work.
 
 Run with --learner on the training machine and --actor on the robot machine
-(see the experiment run_*.sh wrappers). Beyond the upstream hil-serl script,
-this version adds CSV metrics logging, resumable training (checkpoint plus
-replay/demo buffer dumps), actor-side checkpoints aligned to learner steps,
-an actor weight pull on startup, and an optional interactive learner pause.
+(see the experiment run_*.sh wrappers). The actor connects to the learner via
+--ip. The two only share the AgentLace (ZMQ) connection, so the learner can run
+remotely (never expose the unauthenticated ports publicly, use a VPN).
+
+Configuration:
+  - --exp_name selects the task config class through the mapping module given
+    by --config_mapping.
+  - --config applies a task config YAML on top of the class defaults, --teleop
+    overrides the teleop device, and --seed sets the random seed.
+  - --demo_path (repeatable) provides the demonstration data the learner loads
+    at startup. --save_video enables environment video recording.
+
+Checkpoints and resume:
+  - The learner saves checkpoints to --checkpoint_path every
+    config.checkpoint_period steps and dumps replay/demo buffer chunks to
+    buffer/ and demo_buffer/ every config.buffer_period steps.
+  - With an existing --checkpoint_path, the learner restores the latest
+    checkpoint, reloads the buffer dumps, and prunes CSV rows newer than the
+    resumed step.
+  - --save_actor_checkpoint stores local policy checkpoints on the actor every
+    --actor_checkpoint_period weight syncs, numbered by the learner step
+    carried in the broadcast.
+
+Logging:
+  - --logger=csv (default) writes learner_update_metrics.csv,
+    learner_timer_metrics.csv, and actor_stats.csv under checkpoint_path.
+    --logger=wandb uses Weights & Biases instead (--debug disables the upload).
+
+Runtime behavior:
+  - On startup the actor resets its learner-side data cursors, pulls the
+    current weights once, and waits for the first policy before rolling out.
+    --client_timeout_ms tunes the request timeout.
+  - --pause_prompt_period lets the learner offer a periodic interactive pause
+    prompt on a terminal.
+
+Evaluation:
+  - --eval_checkpoint_step and --eval_n_trajs run evaluation episodes instead
+    of training, and --eval_argmax makes action selection deterministic.
 """
 
 import copy
@@ -58,7 +92,7 @@ flags.DEFINE_string("exp_name", None, "Name of experiment corresponding to folde
 flags.DEFINE_string(
     "config_mapping",
     "experiments.mappings",
-    "Dotted module path (optionally ':ATTRIBUTE') exporting the experiment config "
+    "Dotted module path (optionally ':ATTRIBUTE') exporting the task config "
     "mapping. The module must be importable, e.g. PYTHONPATH=examples for the "
     "bundled experiments.",
 )
@@ -100,7 +134,7 @@ flags.DEFINE_enum(
 
 flags.DEFINE_string(
     "config", None,
-    "Path to an experiment YAML. Overrides the default path from TrainConfig.",
+    "Path to a task config YAML. Overrides the default path from TrainConfig.",
 )
 
 flags.DEFINE_string(
@@ -119,8 +153,8 @@ flags.DEFINE_integer(
 flags.DEFINE_boolean(
     "eval_argmax", False,
     "When evaluating (--eval_checkpoint_step > 0), sample actions with "
-    "argmax=True for deterministic policy rollouts. Default False matches "
-    "the historical stochastic eval behaviour.",
+    "argmax=True for deterministic policy rollouts. Default False samples "
+    "stochastically.",
 )
 
 
@@ -822,11 +856,11 @@ def learner(
 
 def main(_):
     global config
-    # The experiment YAML is the settings source everywhere; build the config
+    # The task config YAML is the settings source everywhere; build the config
     # through the shared helper so training and eval apply it identically.
     # Priority: class defaults < YAML < CLI flags.
     if FLAGS.config:
-        print(f"Using experiment config: {FLAGS.config}")
+        print(f"Using task config: {FLAGS.config}")
     extra_overrides = {}
     if FLAGS.teleop:
         extra_overrides["teleop_device"] = FLAGS.teleop

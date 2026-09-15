@@ -30,7 +30,7 @@ Practical setup:
 - Use a SpaceMouse for demos (the walkthrough's "First and foremost" tip applies to demo
   collection as well as interventions).
 - Collect ~20 successful demos per task configuration
-  (see the [walkthrough](robot_walkthrough.md#4-recording-demonstrations)).
+  (see the [walkthrough](task_walkthrough.md#4-recording-demonstrations)).
 
 Demonstrations load into the demo buffer at learner startup and are mixed 50/50 with online replay
 samples in every batch (paper: *"The learner process samples data equally from the demo and RL
@@ -232,7 +232,7 @@ convergence. Classifier noise, heavy reset randomization, or slower control rate
 ## Signals to watch during a run
 
 The learner writes these to the CSV files under `checkpoint_path` (see the
-[walkthrough](robot_walkthrough.md#5-policy-training)). The paper and walkthrough give no
+[walkthrough](task_walkthrough.md#5-policy-training)). The paper and walkthrough give no
 numerical thresholds. The anchor for intervention density is the "1/3 of episodes get reward" rule
 from Phase 1.
 
@@ -377,7 +377,7 @@ plateau is the healthy-equilibrium fingerprint.
 
 ## Related documents
 
-- [robot_walkthrough.md](robot_walkthrough.md): the training pipeline this guide assumes.
+- [task_walkthrough.md](task_walkthrough.md): the training pipeline this guide assumes.
 - [The upstream Franka walkthrough](https://github.com/rail-berkeley/hil-serl/blob/main/docs/franka_walkthrough.md):
   the original source of the quoted protocol.
 - [HIL-SERL paper](https://arxiv.org/abs/2410.21845).

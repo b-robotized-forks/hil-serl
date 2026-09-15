@@ -1,82 +1,126 @@
-# Training Walkthrough
+# Setting up and Training a New Task
 
-This guide walks through the full HIL-SERL training pipeline with the ROS2 architecture of this
-fork, for any robot that provides the adapter contract (see
-[robot_integration.md](robot_integration.md)).
-It generalizes the Franka-specific walkthrough of the original repository. For the original
-version and additional Franka detail, see
+You have a robot with a ROS2 driver and a manipulation task in mind, and you want HIL-SERL to learn it.
+This guide covers everything from the first teleop test to a trained, evaluated policy.
+
+Prerequisite: your robot provides the adapter contract, verified with the smoke test
+(see [robot_integration.md](robot_integration.md)). If you have no robot yet, do the simulated
+[cube demo](../examples/experiments/cube_demo_ros2/README.md) first, it runs the identical
+pipeline against the bundled [ursina](https://www.ursinaengine.org/) simulator, and every step
+below maps one-to-one.
+
+This guide generalizes the Franka-specific walkthrough of the original repository. For the
+original version and additional Franka detail, see
 [the upstream franka_walkthrough](https://github.com/rail-berkeley/hil-serl/blob/main/docs/franka_walkthrough.md).
-
-Where concrete commands help, this guide quotes the simulated cube demo
-([examples/experiments/cube_demo_ros2](../examples/experiments/cube_demo_ros2)), which runs the
-identical pipeline against the bundled [ursina](https://www.ursinaengine.org/) simulator.
-If you have no robot yet, do the cube demo
-first. Every step below maps one-to-one.
 
 ## Overview of the pipeline
 
-1. Bring up the robot (driver plus HIL-SERL topic/service interface).
-2. Create and edit an experiment configuration.
+1. Validate teleop first: confirm a human can control the robot smoothly.
+2. Design and configure the task (poses, bounds, cameras, reward source, experiment folder).
 3. Collect classifier data and train a reward classifier (for classifier-based rewards).
 4. Record a small set of human demonstrations.
 5. Train with RLPD (actor + learner), giving occasional human interventions.
 6. Evaluate checkpoints.
 
-## 1. Robot setup
+How to operate a training run well (demo counts, intervention protocol, metrics) is a topic of its
+own: [training_recommendations.md](training_recommendations.md).
 
-Launch your robot driver and whatever node(s) publish the HIL-SERL interface topics
-(`/hilserl/tcp_pose`, `/hilserl/command_pose`, cameras, ...) and provide the services
-(`set_gripper`, `reset_robot`, ...). How to set this up for a new robot, including the full
-topic and service contract, is documented in [robot_integration.md](robot_integration.md).
+## 1. Validate teleop first
 
-For the simulated demo this is a single command:
+HIL-SERL moves the robot like a "carrot on a stick" (as in how to get a donkey to move :laughing:):
+every step offsets the current TCP pose by a small delta and sends this as target.
+The policy, the recorded demonstrations, and your interventions all act through this exact scheme.
+That leads to the most important rule of adoption: **if you cannot perform the task smoothly by teleoperating through
+this scheme, HIL-SERL will not be able to either.** Bad tracking, jitter, wrong action scales, or
+an awkward input device all can be reasons for the control to not work smoothly, and that has to be tuned first.
+So this is the first step after integrating the robot.
+
+Bring up the robot (driver plus the HIL-SERL interface nodes), or the simulated stand-in:
 
 ```bash
 python serl_ros2/serl_ros2_sim/ursina_sim.py --rate 50 --cameras front,wrist \
     --image-width 128 --image-height 128 --publish-images
 ```
 
-Verify the interface is alive before continuing:
+Then drive the robot with the `teleop_check` tool. It runs the same control loop as training,
+with your hands instead of a policy:
 
 ```bash
-ros2 topic hz /hilserl/tcp_pose
-ros2 topic list | grep hilserl
+# SpaceMouse (recommended device)
+ros2 run serl_ros2 teleop_check --config <your>/adapter_config.yaml --verbose
+
+# Keyboard (run `ros2 run serl_ros2 keyboard_joy` in a second terminal) or gamepad
+ros2 run serl_ros2 teleop_check --config <your>/adapter_config.yaml --teleop joy --verbose
 ```
 
-## 2. Editing the training configuration
+What to do and look for:
 
-Each experiment is a folder holding its config, launch scripts, and generated data.
-Create yours by copying [examples/experiments/cube_demo_ros2](../examples/experiments/cube_demo_ros2)
-and registering it in your config mapping module
+- **Perform the task manually.** For example, for a peg insertion task: pick the peg, move it
+  over the hole, insert it. Repeat until it feels controlled, not lucky. If you cannot do it,
+  fix the setup (device, scales, controller tuning) before going further.
+- **Read the `--verbose` diagnostics**: commanded and actual TCP velocity should be in the same
+  ballpark (if the arm lags far behind, reduce the action scales or retune the controller), and a
+  jittery loop rate points to scheduling problems (see the
+  [performance notes](#ros2-timer-jitter-on-intel-hybrid-cpus)). The script header explains every
+  printed metric.
+- **Tune what later becomes training config**: the teleop device, base/tcp frames, and the
+  `--rate` / `--xyz-scale` / `--rpy-scale` values you end up with translate directly to the
+  experiment's `hz` and `ACTION_SCALE`. Once the task config YAML exists, re-run the check with
+  `--task-config <task_config.yaml>` so it reads exactly the training parameters.
+
+## 2. Design and configure the task
+
+Each experiment/task is a folder holding its config, launch scripts, and generated data. Create yours
+by copying [examples/experiments/cube_demo_ros2](../examples/experiments/cube_demo_ros2) and
+registering it in your config mapping module
 (see [examples/experiments/mappings.py](../examples/experiments/mappings.py), which the training
 scripts find via `--config_mapping`, default `experiments.mappings`).
 
-In your experiment's `config.py`:
+> [!NOTE]
+> It isn't ideal to add this mapping in code, this is something that still isn't addressed in the fork, but planned for future work.
 
-- **Cameras**: list the camera streams in `CAMERAS` in the `EnvConfig` and set the matching camera
-  names in the experiment's `adapter_config.yaml` (the adapter subscribes to
-  `/hilserl/camera/<name>/image`). The camera keys used for policy training and for the reward
-  classifier are listed in `TrainConfig.image_keys` and `TrainConfig.classifier_keys`.
-  Note: the upstream `REALSENSE_CAMERAS` field is not supported in `serl_framework`, use `CAMERAS`.
-  Image size does not matter, `RobotEnv` crops/resizes to 128x128, but publishing small images
-  saves bandwidth. `IMAGE_CROP` can hold per-camera crop functions.
-- **Poses and workspace bounds**: set `TARGET_POSE` (arm pose at task success), `RESET_POSE`
-  (pose to reset to), and the exploration bounding box `ABS_POSE_LIMIT_HIGH` / `ABS_POSE_LIMIT_LOW`.
-  With `RANDOM_RESET` enabled, resets are randomized around `RESET_POSE`
-  (`RANDOM_XY_RANGE`, `RANDOM_RZ_RANGE`). To capture the current arm pose, read it live:
+Design decisions, in the order they usually come up:
+
+- **Reset pose and workspace bounds**: set `RESET_POSE` to a pose from which the task is
+  reachable (e.g. hovering above the workspace with the object grasped), and the exploration bounding box
+  `ABS_POSE_LIMIT_HIGH` / `ABS_POSE_LIMIT_LOW` tightly around the task volume. The bounding box
+  is the main safety mechanism during exploration, keep it tight at first. With `RANDOM_RESET`
+  enabled, resets are randomized around `RESET_POSE` (`RANDOM_XY_RANGE`, `RANDOM_RZ_RANGE`).
+  Capture poses live while teleoperating:
   ```bash
   ros2 topic echo --once /hilserl/tcp_pose
   ```
-- **Control**: `hz` (control rate), `ACTION_SCALE`, and compliance parameters if your robot
-  supports the `set_compliance` service.
+- **Cameras**: list the camera streams in `CAMERAS` in the `EnvConfig` and the matching names in
+  the experiment's `adapter_config.yaml` (the adapter subscribes to
+  `/hilserl/camera/<name>/image`). A wrist camera plus one static view is a good default (e.g. for
+  an insertion task, the wrist camera sees the hole up close). Policy and classifier keys are chosen in `TrainConfig.image_keys` and
+  `TrainConfig.classifier_keys`. Image size does not matter, `RobotEnv` crops/resizes to 128x128,
+  but publishing small images saves bandwidth. More important is `IMAGE_CROP` which holds per-camera crop:
+  since images are scaled to 128x128, it matters that the images see the right thing.
+  (Note: the upstream `REALSENSE_CAMERAS` field is not supported here, use `CAMERAS`).
+- **Reward source**: pose-based (`TARGET_POSE` plus `REWARD_THRESHOLD`) works when success equals
+  reaching a known pose - but that's usually just for testing and not what you may want.
+  Typically, we want a trained image classifier which detects the success of the task in the image
+  (e.g. for a peg insertion task, a classifier that recognizes a seated peg generalizes over
+  holes, while `TARGET_POSE` would fix a single one).
+  Section 3 covers the classifier path. Set `classifier_keys = None` to use the pose reward instead.
+- **Control**: `hz` (control rate) and `ACTION_SCALE`, carried over from your teleop validation,
+  plus compliance parameters if your robot supports the `set_compliance` service.
+- **Gripper mode**: `setup_mode = "single-arm-fixed-gripper"` when the object is pre-grasped or
+  the gripper stays fixed, `"single-arm-learned-gripper"` when the policy must learn to grasp
+  (see [how grasping works](#how-grasping-works-learned-gripper)).
 
-> **TIP**: Keep the bounding box tight around the task at first. It is the main safety mechanism
-> during exploration.
+After editing, re-run `teleop_check --task-config <your_experiment.yaml>` once: it now uses
+the exact training rate and scales, which is the final confirmation that the task is humanly
+doable under training conditions.
 
 ## 3. Training a reward classifier
 
 For classifier-based rewards, success is detected by a binary classifier trained on camera images.
 (Alternatively, simple tasks can use a pose-based reward. The cube demo shows both variants.)
+
+You can use any classifier (e.g. we tried a q-value based classifier in a separate project),
+or use the one which this repo ships - which is the one which will be discussed here.
 
 Collect labeled data while teleoperating:
 
@@ -86,25 +130,12 @@ PYTHONPATH=examples python -m serl_framework.train.record_success_fail \
 ```
 
 The script stores transitions in `.pkl` files under `classifier_data/`. Classifier training uses
-only the image observations selected by `classifier_keys` plus binary labels. Labels are per
-transition (per control step), not per episode. Labeling controls:
+only the image observations selected by `classifier_keys` in the config, plus binary labels.
+Labels are per transition (per control step), not per episode: press `Space` to enter success
+mode while the scene shows success, press `Esc` (or let the episode end) to commit and reset.
+The script header and `--help` document all labeling controls.
 
-- Press `Space` once to enter success mode. Press `Space` again to cancel it and discard the
-  pending success samples.
-- The last `--discard_before_success_seconds` immediately before the `Space` press are dropped
-  (not labeled failure), so near-success frames stay out of the failure set.
-- In success mode, at most `--success_samples_per_second` transitions per second are labeled
-  success. All other transitions are dropped.
-- In failure mode, transitions are labeled failure (`--negative_sample_stride` records only every
-  Nth one).
-- Success samples are staged and committed only on `Esc` reset or episode end.
-- `--failures_needed` sets an explicit minimum failure count, and `--episode_length` overrides
-  the episode length for the run.
-
-Practical implication: you do not need to hold a key every frame. Enter success mode during the
-successful visual state window, cancel it if it was a mistake, and reset with `Esc` (or let the
-episode end) to commit.
-
+> [!NOTE]
 > **TIP**: To train a classifier robust against false positives, collect 2-3x more negative than
 > positive transitions, covering all failure modes: wrong locations, halfway-in insertions, or
 > holding the object right next to the goal.
@@ -115,26 +146,18 @@ Train the classifier (saved to `classifier_ckpt/` in the current directory):
 PYTHONPATH=examples python -m serl_framework.train.train_reward_classifier --exp_name <your_exp>
 ```
 
-Verify it live while teleoperating, before recording demos:
-
-```bash
-PYTHONPATH=examples python -m serl_framework.train.stream_classifier_prob \
-    --exp_name <your_exp> --threshold 0.75
-```
-
 ## 4. Recording demonstrations
 
-A small number of human demonstrations (typically 10-30) is crucial to accelerate training:
+A small number of human demonstrations (typically 20) is crucial to accelerate training:
 
 ```bash
 PYTHONPATH=examples python -m serl_framework.train.record_demos \
     --exp_name <your_exp> --successes_needed 20
 ```
 
-Demos are accepted only when an episode ends with success (`info["succeed"]`, decided by the
-classifier threshold for classifier-based tasks). Progress is saved incrementally after every
-accepted demo, `--resume <pkl>` continues a previous session, and the experiment YAML in effect is
-snapshotted next to the output pkl. Results land in `demo_data/`.
+Demos are accepted only when an episode ends with success (decided by the classifier threshold
+for classifier-based tasks) and land in `demo_data/`. Progress is saved incrementally after every
+accepted demo and interrupted sessions can be resumed. The script header and `--help` document the details.
 
 > **TIP**: If the classifier produces false positives (episode ends with reward without real
 > success) or false negatives, collect additional classifier data targeting those failure modes
@@ -157,24 +180,21 @@ bash run_learner.sh /path/to/demo.pkl
 bash run_actor.sh --ip <learner-ip>
 ```
 
-Useful behavior beyond upstream:
+Useful behavior beyond upstream (flags and details in the `train_rlpd.py` header and `--help`):
 
-- **Resume**: if `checkpoint_path` already holds checkpoints, the learner resumes from the latest
-  one, reloads saved replay/demo buffers (`buffer/`, `demo_buffer/`, written every
-  `buffer_period` steps), and prunes stale CSV log rows.
-- **Metrics**: with the default `--logger=csv`, the learner writes `learner_update_metrics.csv`,
-  `learner_timer_metrics.csv`, and `actor_stats.csv` under `checkpoint_path`.
-  Use `--logger=wandb` for Weights & Biases.
-- **Actor-side checkpoints**: `--save_actor_checkpoint` saves policy checkpoints on the actor,
-  numbered by learner step.
-- **Pause**: `--pause_prompt_period N` lets the learner offer an interactive pause every N steps.
+- **Resume**: the learner resumes from the latest checkpoint in `checkpoint_path`, reloads saved
+  replay/demo buffers, and prunes stale CSV log rows.
+- **Metrics**: CSV files under `checkpoint_path` by default (learner updates, timing, actor
+  episode stats). Weights & Biases remains available (upstream behavior).
+- **Pause**: the learner can periodically offer an interactive pause. Useful if you cannot keep
+  intervening right now and do not want to restart the learner later.
 
 ### Running the learner remotely
 
 The actor and learner communicate only over AgentLace (ZMQ), so the learner can run on any machine
-with a GPU, for example a single cloud GPU instance (we used an NVIDIA L4). The actor machine must
+with a GPU, for example a single cloud GPU instance. The actor machine must
 be able to reach the learner's AgentLace ports (5588 for requests and data upload, 5589 for the
-weight broadcast), typically over a VPN. Never expose these ports publicly, the connection is
+weight broadcast), typically over a VPN. Don't expose these ports publicly, the connection is
 unauthenticated.
 
 ```
@@ -215,24 +235,19 @@ Checkpoints, resume buffers, and the metrics CSVs are written on the learner mac
 ### Interventions during training
 
 You intervene the same way as when recording demos: as soon as the teleop device leaves its
-deadzone, the intervention overrides the policy action and the transition is tagged with
-`intervene_action`. The learner mixes online replay with demo/intervention replay, so corrections
+deadzone, the intervention overrides the policy action and the transition is tagged as intervention.
+The learner mixes online replay with demo/intervention replay, so corrections
 flow directly into training. Interventions are what make HIL-SERL work: demos teach how to do the
-task, interventions teach how to recover when things go wrong.
+task, interventions teach how to recover when things go wrong or how to avoid useless actions
+(e.g. moving away from insertion point).
 
 When and how much to intervene matters a lot for training speed and final robustness. Follow
 [training_recommendations.md](training_recommendations.md) for the intervention protocol
 (frequent early, taper, targeted late), intervention style, and which metrics to watch.
 
-### Episode end and reset semantics
-
-- `done` triggers on max episode length, the success reward condition, or a manual terminate flag.
-- `truncated` is used for external interruption/timeouts (e.g. stale state in `RobotEnv.step()`).
-- The recording scripts and the actor reset on `done or truncated`.
-- `Esc` globally ends the current episode early (a `RobotEnv` keyboard listener sets the
-  terminate flag). This applies to recording and training rollouts alike.
-
 ## 6. Evaluating a policy
+
+When you think the policy has converged well enough, it's time to evaluate it.
 
 Add eval flags to the actor:
 
@@ -240,11 +255,9 @@ Add eval flags to the actor:
 bash run_actor.sh --eval_checkpoint_step 50000 --eval_n_trajs 50
 ```
 
-`--eval_argmax` switches to deterministic action selection during eval.
-
-Training-time success is upward-biased (interventions count as successes), so evaluate candidate
-checkpoints separately with enough trials, and do not assume a later checkpoint is better. See
-the eval protocol in [training_recommendations.md](training_recommendations.md#2-evaluate-separately-the-training-metrics-are-not-ground-truth).
+Training-time success is upward-biased (intervention-helped episodes also count as successes),
+so it is important to evaluate candidate checkpoints separately with enough trials.
+Do not assume a later checkpoint is better - see the eval protocol in [training_recommendations.md](training_recommendations.md#2-evaluate-separately-the-training-metrics-are-not-ground-truth).
 
 ## How grasping works (learned gripper)
 
@@ -259,25 +272,21 @@ without changing the arm reward.
 
 Two separate signals exist, in intentionally different domains:
 
-- **Action command** (`action[6]`, range `[-1, 1]`): close/open intent from the policy or the
+- **Action command** (range `[-1, 1]`): close/open intent from the policy or the
   intervention wrapper. Teleop buttons map to strong values (close in `[-1.0, -0.9]`, open in
   `[0.9, 1.0]`, else `0.0`) so intent stays away from the decision boundary.
-- **Measured state** (`gripper_pose`, range `[0, 1]`): normalized feedback from the robot adapter
+- **Measured state** (gripper pose in range `[0, 1]`): normalized feedback from the robot adapter
   with `0=closed`, `1=open`.
 
-`RobotEnv` treats `action[6] <= -0.5` as a close candidate and `action[6] >= 0.5` as an open
+`RobotEnv` treats an action command `<= -0.5` as a close candidate and `>= 0.5` as an open
 candidate, but only sends the service call if the measured state says it is still needed
-(close only if `gripper_pose > GRIPPER_OPEN_THRESHOLD`, open only if below). This
-"open enough / closed enough" gate acts as hysteresis against noisy gripper feedback, and a
-time-based debounce (`GRIPPER_SLEEP`) prevents rapid toggling. Start with
-`GRIPPER_OPEN_THRESHOLD = 0.85` and tune if your gripper's normalized signal clusters differently
-near the physical endpoints.
+(close only "open enough", specifically if gripper pose `> GRIPPER_OPEN_THRESHOLD`.
+Start with `GRIPPER_OPEN_THRESHOLD = 0.85` and tune for your gripper.
 
-At the adapter boundary, both directions are normalized `[0, 1]` with `0=closed`, `1=open`
-(state on `/hilserl/gripper_pos`, commands via `set_gripper` `MODE_POSITION`). Hardware with raw
-joint units (where open can be numerically larger or smaller than closed) should be converted in
-the adapter using calibrated open/closed endpoints, inferring the direction from the calibration
-and clamping to `[0, 1]`. This keeps env logic and task configs robot-agnostic.
+At the adapter boundary, both directions are normalized `[0, 1]` with `0=closed`, `1=open`.
+This keeps env logic and task configs robot-agnostic.
+Hardware with raw joint units (where open can be numerically larger or smaller than closed)
+should be converted in the adapter using calibrated open/closed endpoints. 
 
 ## Tips and troubleshooting
 
@@ -321,7 +330,7 @@ ROS2 nodes onto E-cores. This causes severe timer jitter and unstable publish ra
 30-50 Hz. It is an OS scheduling effect, not a ROS2 bug. Check with
 `ros2 topic hz /hilserl/tcp_pose`: large `max` gaps between messages indicate the problem.
 The fix is to pin each Python ROS2 node to a dedicated P-core (check the core layout with
-`lscpu`, avoid hyper-thread siblings):
+`lscpu` and avoid hyper-thread siblings):
 
 ```bash
 taskset -c 2 python serl_ros2/serl_ros2_sim/ursina_sim.py --rate 50

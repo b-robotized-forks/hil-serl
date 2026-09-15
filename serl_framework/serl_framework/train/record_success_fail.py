@@ -3,12 +3,34 @@
 Adapted from examples/record_success_fail.py of the original hil-serl repository
 (rail-berkeley/hil-serl); the core recording loop is the original authors' work.
 
-Drive the robot via teleop while the script records transitions. Press SPACE to
-enter success mode (rate limited success labels; press SPACE again to undo the
-pending ones), press ESC to commit pending successes and reset the episode.
-Failure transitions from just before a success are discarded via
---discard_before_success_seconds so mislabeled near-success frames stay out of
-the failure set.
+Drive the robot via teleop while the script records transitions into pkl files
+under --output_dir (default ./classifier_data). Labels are per transition (per
+control step), not per episode.
+
+Labeling controls:
+  - SPACE enters success mode. Pressing SPACE again cancels it and discards
+    the pending success samples.
+  - ESC commits the pending successes and resets the episode. Episode end
+    (done or truncated) commits as well. Until then, success samples are only
+    staged, so a mislabeled stretch can still be undone.
+  - In success mode, at most --success_samples_per_second transitions per
+    second are labeled success. The rest are dropped.
+  - The last --discard_before_success_seconds before a SPACE press are dropped
+    from the failure set, keeping near-success frames out of the negatives.
+  - In failure mode, every --negative_sample_stride'th transition is recorded
+    as failure.
+
+Targets and outputs:
+  - --successes_needed sets the success count to collect, and --failures_needed
+    optionally sets a minimum failure count (second progress bar).
+  - --success_output / --failure_output override the exact output paths.
+    Empty pkls are not written.
+  - --episode_length (alias --max_episode_steps) overrides the episode length
+    for this run.
+
+Practical use: you do not need to hold a key every frame. Enter success mode
+during the successful visual state window, cancel it if it was a mistake, and
+reset with ESC (or let the episode end) to commit.
 """
 
 import copy
@@ -31,7 +53,7 @@ flags.DEFINE_string("exp_name", None, "Name of experiment corresponding to folde
 flags.DEFINE_string(
     "config_mapping",
     "experiments.mappings",
-    "Dotted module path (optionally ':ATTRIBUTE') exporting the experiment config "
+    "Dotted module path (optionally ':ATTRIBUTE') exporting the task config "
     "mapping. The module must be importable, e.g. PYTHONPATH=examples for the "
     "bundled experiments.",
 )
@@ -69,7 +91,7 @@ flags.DEFINE_integer(
 flags.DEFINE_string(
     "config",
     None,
-    "Path to an experiment YAML. Overrides the default path from TrainConfig.",
+    "Path to a task config YAML. Overrides the default path from TrainConfig.",
 )
 flags.DEFINE_string(
     "teleop",

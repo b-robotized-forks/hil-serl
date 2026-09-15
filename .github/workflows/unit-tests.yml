@@ -107,7 +107,7 @@ jobs:
           PYNPUT_BACKEND_KEYBOARD: dummy
           PYNPUT_BACKEND_MOUSE: dummy
         run: |
-          for m in train_rlpd record_demos record_success_fail train_reward_classifier stream_classifier_prob; do
+          for m in train_rlpd record_demos record_success_fail train_reward_classifier; do
             echo "import serl_framework.train.$m"
             python -c "import serl_framework.train.$m"
           done

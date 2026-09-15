@@ -64,7 +64,7 @@ python serl_ros2/serl_ros2_sim/ursina_sim.py --rate 50 --cameras front,wrist --i
 
 > [!IMPORTANT]
 > If the sim or teleop feels jittery on Intel hybrid CPUs, follow the
-> [performance notes in the walkthrough](../../../docs/robot_walkthrough.md#ros2-timer-jitter-on-intel-hybrid-cpus)
+> [performance notes in the walkthrough](../../../docs/task_walkthrough.md#ros2-timer-jitter-on-intel-hybrid-cpus)
 > and pin the sim + node to P-cores (e.g., via `taskset`).
 
 ### (a) [only if **NOT** using TARGET_POSE] Train reward classifier 
@@ -202,5 +202,4 @@ Teleop documentation is centralized in:
 Use that section for:
 - keyboard/gamepad setup
 - `pose_to_joy` and RViz-marker flow
-- multi-device mux (`joy_mux`)
 - frame-id behavior (`base` vs `tcp`, including `joy_node` caveats)

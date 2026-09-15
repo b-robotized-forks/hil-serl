@@ -15,23 +15,23 @@ def override_episode_length(env, episode_length: int, exp_name: str) -> None:
     print(f"Overriding max_episode_length to {episode_length}")
 
 
-def save_experiment_config_snapshot(config, pkl_path: str) -> None:
-    """Copy the experiment config yaml next to ``pkl_path`` using the same basename.
+def save_task_config_snapshot(config, pkl_path: str) -> None:
+    """Copy the task config yaml next to ``pkl_path`` using the same basename.
 
     The resulting file (same stem as the pkl, .yaml extension) makes it clear
     which settings produced a given recording, and keeps the pair together
     regardless of where the pkl is later copied.
     """
-    src = getattr(config, "experiment_config_path", None)
+    src = getattr(config, "task_config_path", None)
     if not src or not os.path.isfile(src):
         print(
-            f"warning: no experiment_config_path on config (or file missing); "
+            f"warning: no task_config_path on config (or file missing); "
             f"skipping config snapshot for {pkl_path}"
         )
         return
     dst = os.path.splitext(pkl_path)[0] + ".yaml"
     try:
         shutil.copyfile(src, dst)
-        print(f"saved experiment config snapshot to {dst}")
+        print(f"saved task config snapshot to {dst}")
     except OSError as exc:
         print(f"warning: could not save config snapshot to {dst}: {exc}")

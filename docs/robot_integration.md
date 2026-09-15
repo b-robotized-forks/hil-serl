@@ -4,7 +4,7 @@ This guide describes how to connect a new robot to HIL-SERL. The result is a sma
 robot side that provides the topics and services listed in the
 [contract](#robot-integration-contract) below. Once that bridge works, everything else
 (teleop, data collection, training) runs unchanged, as described in the
-[training walkthrough](robot_walkthrough.md).
+[training walkthrough](task_walkthrough.md).
 
 Prerequisites: a ROS2 driver for your robot that can track Cartesian TCP pose targets
 (e.g. an impedance or admittance controller), and the installed packages from
@@ -76,7 +76,7 @@ Further notes:
   convention of the original code base was standardized away).
 - Gripper feedback and commands must be normalized at the adapter boundary using calibrated
   open/closed endpoints. See
-  [how grasping works](robot_walkthrough.md#how-grasping-works-learned-gripper) for the details.
+  [how grasping works](task_walkthrough.md#how-grasping-works-learned-gripper) for the details.
 - Teleop input can be a `sensor_msgs/Joy` publisher or a direct device reader like
   `SpaceMouseTeleop`.
 - Dual-arm setups are not yet addressed by the adapter design.
@@ -100,29 +100,17 @@ ros2 run serl_ros2 serl_ros2_smoke --config <path-to-your>/adapter_config.yaml
 Start from [serl_ros2/config/adapter_example.yaml](../serl_ros2/config/adapter_example.yaml) for
 the adapter config (camera names, sync tolerance, command frame).
 
-## 3. Test motion and teleop before any RL
+## 3. Next: validate teleop, then set up the task
 
-Drive the robot by hand through the adapter, using the same teleop path that interventions will
-use later:
-
-```bash
-python serl_ros2/serl_ros2_sim/test_teleop.py --config <path-to-your>/adapter_config.yaml
-```
-
-This uses a SpaceMouse by default. For keyboard or gamepad, start a Joy source and pass
-`--teleop joy` (see [serl_ros2/README.md](../serl_ros2/README.md#teleop) for the device options):
+With the interface verified, the next gate is driving the robot by hand through the adapter with
+the `teleop_check` tool:
 
 ```bash
-ros2 run serl_ros2 keyboard_joy
-python serl_ros2/serl_ros2_sim/test_teleop.py --config <path-to-your>/adapter_config.yaml --teleop joy
+ros2 run serl_ros2 teleop_check --config <path-to-your>/adapter_config.yaml --verbose
 ```
 
 Move slowly and confirm that the robot tracks pose targets, that frames behave as expected
 (base vs TCP), and that the gripper opens and closes. Fix problems here, not during training.
-
-## 4. Create an experiment and train
-
-Copy [examples/experiments/cube_demo_ros2](../examples/experiments/cube_demo_ros2) as a template,
-adjust poses, workspace bounds, and cameras for your task, and register it in your config mapping
-module (see [examples/README.md](../examples/README.md)). Then continue with the
-[training walkthrough](robot_walkthrough.md).
+Why this step matters, what to look for in the diagnostics, and everything that follows
+(task design, experiment setup, data collection, training) is covered in
+[task_walkthrough.md](task_walkthrough.md).

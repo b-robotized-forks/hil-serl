@@ -35,7 +35,7 @@ class LazyConfigMapping(dict):
 
 
 def load_config_mapping(spec: str) -> dict:
-    """Load an experiment config mapping from a module path specification.
+    """Load a task config mapping from a module path specification.
 
     Args:
         spec: ``"module.path"`` or ``"module.path:ATTRIBUTE"``. The attribute
@@ -65,7 +65,7 @@ def load_config_mapping(spec: str) -> dict:
     return mapping
 
 
-def resolve_experiment_config_class(mapping: dict, exp_name: str):
+def resolve_task_config_class(mapping: dict, exp_name: str):
     """Return the TrainConfig class for ``exp_name``, with a helpful error if unknown."""
     if exp_name not in mapping:
         known = ", ".join(sorted(str(k) for k in mapping)) or "<empty>"

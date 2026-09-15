@@ -77,10 +77,9 @@ through the RobotAdapter. The SIM itself does not read SpaceMouse input directly
 #### Control the ball with Teleop (SpaceMouse, Keyboard/Gamepad or Pose-To-Joy via ROS2 Joy)
 
 To emulate how Hil-Serl `RobotAdapter` reacts to teleop input, and test it with the Ursina sim,
-we have to use another script which explicitly (especially for demonstration) runs in a different node,
-and uses `RobotAdapter`.
-
-Run the test node from the `hil-serl` directory.
+use the `teleop_check` tool. It runs in its own node and drives the sim through `RobotAdapter`,
+exactly like the training loop does. Run it from the `hil-serl` directory (or anywhere, with
+adjusted config paths).
 
 First launch the ursina simulator with the simple ball (simulates the end effector)
 
@@ -94,14 +93,17 @@ Now, test the teleop. You have three options: spacemouse, keyboard/gamepad, or p
 **Option A: SpaceMouse**
 
 ```bash
-python serl_ros2/serl_ros2_sim/test_teleop.py --config serl_ros2/serl_ros2_sim/adapter_config.yaml 
+ros2 run serl_ros2 teleop_check --config serl_ros2/serl_ros2_sim/adapter_config.yaml
 ```
+
+(Without a colcon install, run it directly:
+`python serl_ros2/serl_ros2/teleop_check.py --config ...`.)
 
 By default, SpaceMouse commands are tagged as TCP-frame (`--spacemouse-frame-id tcp`).
 Use base frame instead with:
 
 ```bash
-python serl_ros2/serl_ros2_sim/test_teleop.py --config serl_ros2/serl_ros2_sim/adapter_config.yaml --spacemouse-frame-id base
+ros2 run serl_ros2 teleop_check --config serl_ros2/serl_ros2_sim/adapter_config.yaml --spacemouse-frame-id base
 ```
 
 **Option B*: Keyboard or Gamepad (via ROS2 Joy)**
@@ -129,7 +131,7 @@ ros2 run joy joy_node --ros-args -p device_id:=1 -r joy:=teleop_joy
 
 In Terminal 2, run the teleop test (**NOTE:** Add argument `--joy-preset xbox` if you are using the xbox controller):
 ```bash
-python serl_ros2/serl_ros2_sim/test_teleop.py --config serl_ros2/serl_ros2_sim/adapter_config.yaml  --teleop joy
+ros2 run serl_ros2 teleop_check --config serl_ros2/serl_ros2_sim/adapter_config.yaml --teleop joy
 ```
 
 **Option C: Pose-To-Joy (target pose -> Joy)**
@@ -156,22 +158,7 @@ pose:
 
 ```bash
 # Terminal 3: Teleop test node consuming Joy
-python serl_ros2/serl_ros2_sim/test_teleop.py --config serl_ros2/serl_ros2_sim/adapter_config.yaml --teleop joy
-```
-
-**Option D: Combined teleop sources via `joy_mux`**
-
-If you want to run multiple sources at the same time (marker + keyboard + joy
-device) and have only the currently active one drive teleop, launch:
-
-```bash
-ros2 launch serl_ros2 teleop_mux.launch.py
-```
-
-Then run:
-
-```bash
-python serl_ros2/serl_ros2_sim/test_teleop.py --config serl_ros2/serl_ros2_sim/adapter_config.yaml --teleop joy
+ros2 run serl_ros2 teleop_check --config serl_ros2/serl_ros2_sim/adapter_config.yaml --teleop joy
 ```
 
 See [serl_ros2 README - Teleop](../README.md#teleop) for more details regarding keyboard controls, device selection, and axis remapping.
@@ -186,7 +173,7 @@ See [serl_ros2 README - Teleop](../README.md#teleop) for more details regarding 
 > ```
 > If you see high `max` values, then you have an issue!
 > 
-> Please check the [performance notes in the walkthrough](../../docs/robot_walkthrough.md#ros2-timer-jitter-on-intel-hybrid-cpus) for details.
+> Please check the [performance notes in the walkthrough](../../docs/task_walkthrough.md#ros2-timer-jitter-on-intel-hybrid-cpus) for details.
 > 
 > Shortcut for a fix: prepend `taskset -c <cpu>`:
 > 
@@ -195,5 +182,5 @@ See [serl_ros2 README - Teleop](../README.md#teleop) for more details regarding 
 > ```
 > and
 > ```
-> taskset -c 4 python serl_ros2/serl_ros2_sim/test_teleop.py --config examples/experiments/cube_demo_ros2/adapter_config.yaml --rate 40
+> taskset -c 4 ros2 run serl_ros2 teleop_check --config examples/experiments/cube_demo_ros2/adapter_config.yaml --rate 40
 > ```

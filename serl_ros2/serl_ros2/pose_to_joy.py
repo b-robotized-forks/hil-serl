@@ -33,7 +33,6 @@ import rclpy
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation, Slerp
 from sensor_msgs.msg import Joy
-from std_msgs.msg import String
 from std_msgs.msg import UInt8
 
 
@@ -96,9 +95,6 @@ class PoseToJoy(Node):
         self.declare_parameter("publish_rate_hz", 40.0)
         self.declare_parameter("tcp_stale_timeout_s", 0.5)
         self.declare_parameter("require_frame_match", True)
-        self.declare_parameter("enable_external_preempt_disarm", False)
-        self.declare_parameter("active_source_topic", "/teleop/active_source")
-        self.declare_parameter("active_source_name", "pose")
         self.declare_parameter("gripper_command_topic", "/pose_to_joy/gripper_command")
         self.declare_parameter("gripper_button_pulse_s", 0.2)
 
@@ -174,21 +170,6 @@ class PoseToJoy(Node):
         self.require_frame_match = (
             self.get_parameter("require_frame_match").get_parameter_value().bool_value
         )
-        self.enable_external_preempt_disarm = (
-            self.get_parameter("enable_external_preempt_disarm")
-            .get_parameter_value()
-            .bool_value
-        )
-        self.active_source_topic = (
-            self.get_parameter("active_source_topic")
-            .get_parameter_value()
-            .string_value
-        )
-        self.active_source_name = (
-            self.get_parameter("active_source_name")
-            .get_parameter_value()
-            .string_value
-        )
         self.gripper_command_topic = (
             self.get_parameter("gripper_command_topic")
             .get_parameter_value()
@@ -224,11 +205,6 @@ class PoseToJoy(Node):
             raise ValueError("base_frame_id must not be empty.")
         if not self.tcp_frame_id:
             raise ValueError("tcp_frame_id must not be empty.")
-        if self.enable_external_preempt_disarm and not self.active_source_name:
-            raise ValueError(
-                "active_source_name must not be empty when "
-                "enable_external_preempt_disarm is true."
-            )
         if self.output_command_frame == "base":
             self.output_command_frame = self.base_frame_id
         elif self.output_command_frame == "tcp":
@@ -266,14 +242,6 @@ class PoseToJoy(Node):
             self._on_gripper_command,
             10,
         )
-        self._active_source_sub = None
-        if self.enable_external_preempt_disarm:
-            self._active_source_sub = self.create_subscription(
-                String,
-                self.active_source_topic,
-                self._on_active_source,
-                10,
-            )
 
         period_s = 1.0 / self.publish_rate_hz
         self._timer = self.create_timer(period_s, self._on_timer)
@@ -306,11 +274,6 @@ class PoseToJoy(Node):
             "Gripper command bridge: "
             f"topic='{self.gripper_command_topic}' pulse={self.gripper_button_pulse_s:.3f}s."
         )
-        if self.enable_external_preempt_disarm:
-            self.get_logger().info(
-                "External preempt disarm enabled: "
-                f"topic='{self.active_source_topic}', source='{self.active_source_name}'."
-            )
 
     def _on_target_pose(self, msg: PoseStamped) -> None:
         """
@@ -353,20 +316,6 @@ class PoseToJoy(Node):
         pulse_s = max(self.gripper_button_pulse_s, min_pulse_s)
         self._gripper_pulse_buttons = pulse_buttons
         self._gripper_pulse_end_s = now + pulse_s
-
-    def _on_active_source(self, msg: String) -> None:
-        """Disarm marker teleop when another source is selected by an external mux."""
-        selected_source = str(msg.data).strip()
-        if selected_source == self.active_source_name:
-            return
-        if not self._target_active:
-            return
-        self._target_active = False
-        self._publish_zero_joy()
-        self.get_logger().info(
-            "PoseToJoy disarmed due to external source preemption "
-            f"(selected='{selected_source or 'none'}')."
-        )
 
     def _pose_sample_from_msg(self, msg: PoseStamped) -> PoseSample:
         """Convert a `PoseStamped` message to an internal `PoseSample`."""

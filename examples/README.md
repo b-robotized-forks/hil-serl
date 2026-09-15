@@ -1,6 +1,6 @@
 # Examples
 
-This directory holds example experiment configurations for the ROS2-based HIL-SERL pipeline.
+This directory holds example task configurations for the ROS2-based HIL-SERL pipeline.
 
 - [experiments/cube_demo_ros2](experiments/cube_demo_ros2): a fully simulated end-to-end demo
   (teleop, reward classifier, demonstrations, RLPD training) against the bundled
@@ -15,7 +15,7 @@ This directory holds example experiment configurations for the ROS2-based HIL-SE
    an optional env `wrapper.py`, and the `run_actor.sh` / `run_learner.sh` launch scripts.
 2. Register the new experiment in [experiments/mappings.py](experiments/mappings.py)
    (or in your own mapping module, passed to the training scripts via `--config_mapping`).
-3. Follow [docs/robot_walkthrough.md](../docs/robot_walkthrough.md) for the full training pipeline.
+3. Follow [docs/task_walkthrough.md](../docs/task_walkthrough.md) for the full training pipeline.
 
 The training scripts themselves live in the `serl_framework.train` package
 (`python -m serl_framework.train.train_rlpd ...`). Run them from the repo root with
