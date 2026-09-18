@@ -7,31 +7,7 @@ this design. For the complete list of changes vs upstream, see [CHANGES_FORK.md]
 
 ## System overview
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                              HIL-SERL                       │
-│  ┌──────────────┐                       ┌──────────────┐    │
-│  │ACTOR PROCESS │ ── env.step/reset ───►│  RobotEnv    │    │
-│  │  (Robot PC)  │                       │  (gym)       │    │
-│  └──────┬───────┘                       └──────┬───────┘    │
-│         │ AgentLace (ZMQ)                      │            │
-│         │ transitions / weight updates         │            │
-│  ┌──────┴───────┐                              │            │
-│  │  LEARNER     │                              │            │
-│  │  (GPU PC)    │                              │            │
-│  └──────────────┘                              │            │
-└────────────────────────────────────────────────┼────────────┘
-                                             in-process API
-                                                 │
-┌────────────────────┐   ROS2 topics   ┌─────────┴───────────┐   ROS2 topics   ┌────────────────────┐
-│ Cameras / Sensors  │ ───────────────►│   Robot Adapter     │ ◄────────────── │ Teleop Device (Joy)│
-└────────────────────┘                 │     (ROS2 node)     │                 └────────────────────┘
-                                       └─────────┬───────────┘
-                                                 ▼
-                                       ┌──────────────────────┐
-                                       │ Robot Driver + HW    │
-                                       └──────────────────────┘
-```
+![Architecture](media/architecture.svg)
 
 Three layers, with one-way dependencies from top to bottom:
 

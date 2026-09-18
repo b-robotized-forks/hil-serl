@@ -112,31 +112,7 @@ interface between the Gymnasium env and the robot. The ROS2 implementation of th
 (`serl_ros2`) is the only component that talks ROS2, so the learning stack stays robot- and
 middleware-agnostic:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                              HIL-SERL                       │
-│  ┌──────────────┐                       ┌──────────────┐    │
-│  │ACTOR PROCESS │ ── env.step/reset ───►│  RobotEnv    │    │
-│  │  (Robot PC)  │                       │  (gym)       │    │
-│  └──────┬───────┘                       └──────┬───────┘    │
-│         │ AgentLace (ZMQ)                      │            │
-│         │ transitions / weight updates         │            │
-│  ┌──────┴───────┐                              │            │
-│  │  LEARNER     │                              │            │
-│  │  (GPU PC)    │                              │            │
-│  └──────────────┘                              │            │
-└────────────────────────────────────────────────┼────────────┘
-                                             in-process API
-                                                 │
-┌────────────────────┐   ROS2 topics   ┌─────────┴───────────┐   ROS2 topics   ┌────────────────────┐
-│ Cameras / Sensors  │ ───────────────►│   Robot Adapter     │ ◄────────────── │ Teleop Device (Joy)│
-└────────────────────┘                 │     (ROS2 node)     │                 └────────────────────┘
-                                       └─────────┬───────────┘
-                                                 ▼
-                                       ┌──────────────────────┐
-                                       │ Robot Driver + HW    │
-                                       └──────────────────────┘
-```
+![Architecture](docs/media/architecture.svg)
 
 The actor and learner run as separate processes connected only by AgentLace, so the learner can
 live on any GPU machine, including a cloud instance. Details on the adapter design, state

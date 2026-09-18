@@ -1,0 +1,59 @@
+<mxfile host="localhost">
+  <diagram id="arch" name="architecture">
+    <mxGraphModel dx="1348" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="700" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="hilserl" parent="1" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;align=center;spacingLeft=10;fillColor=none;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;container=1;collapsible=0;" value="HIL-SERL" vertex="1">
+          <mxGeometry height="244" width="498.5" x="192.75" y="46" as="geometry" />
+        </mxCell>
+        <mxCell id="actor" parent="hilserl" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Actor process&lt;/b&gt;&lt;br&gt;(robot PC)" vertex="1">
+          <mxGeometry height="61" width="132.4140625" x="31.15625" y="43.103333333333325" as="geometry" />
+        </mxCell>
+        <mxCell id="learner" parent="hilserl" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Learner&lt;/b&gt;&lt;br&gt;(GPU PC, local or cloud)" vertex="1">
+          <mxGeometry height="61" width="132.4140625" x="31.15625" y="162.66666666666666" as="geometry" />
+        </mxCell>
+        <mxCell id="env" parent="hilserl" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;RobotEnv&lt;/b&gt;&lt;br&gt;(Gymnasium env)" vertex="1">
+          <mxGeometry height="61" width="132.4140625" x="323.25171875" y="43.10333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="e_actor_env" edge="1" parent="hilserl" source="actor" style="fontSize=11;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;" target="env" value="env.step() / reset()">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_actor_learner" edge="1" parent="hilserl" source="actor" style="startArrow=classic;startFill=1;fontSize=11;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;" target="learner" value="AgentLace (ZMQ)&lt;br&gt;transitions / weight updates">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="adapter" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;Robot Adapter&lt;/b&gt;&lt;br&gt;(ROS2 node)" vertex="1">
+          <mxGeometry height="70" width="180" x="352" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="cameras" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Cameras / Sensors" vertex="1">
+          <mxGeometry height="60" width="150" x="69" y="385" as="geometry" />
+        </mxCell>
+        <mxCell id="teleop" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Teleop device&lt;br&gt;(SpaceMouse / Joy)" vertex="1">
+          <mxGeometry height="60" width="150" x="367" y="536" as="geometry" />
+        </mxCell>
+        <mxCell id="driver" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="&lt;b&gt;Robot driver + hardware&lt;/b&gt;" vertex="1">
+          <mxGeometry height="60" width="180" x="642" y="385" as="geometry" />
+        </mxCell>
+        <mxCell id="e_env_adapter" edge="1" parent="1" source="env" style="fontSize=11;edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="adapter" value="in-process API">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="582.2" y="336" />
+              <mxPoint x="442" y="336" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_cam_adapter" edge="1" parent="1" source="cameras" style="fontSize=11;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;" target="adapter" value="ROS2 topics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_teleop_adapter" edge="1" parent="1" source="teleop" style="fontSize=11;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;" target="adapter" value="ROS2 topics (Joy)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_adapter_driver" edge="1" parent="1" source="adapter" style="startArrow=classic;startFill=1;fontSize=11;edgeStyle=orthogonalEdgeStyle;rounded=0;libavoidRouting=1;orthogonalLoop=1;jettySize=auto;html=1;" target="driver" value="pose targets,&amp;nbsp;&lt;div&gt;services,&lt;br&gt;robot state&lt;/div&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
