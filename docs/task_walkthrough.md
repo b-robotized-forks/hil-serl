@@ -197,22 +197,7 @@ be able to reach the learner's AgentLace ports (5588 for requests and data uploa
 weight broadcast), typically over a VPN. Don't expose these ports publicly, the connection is
 unauthenticated.
 
-```
-      ROBOT MACHINE                                GPU MACHINE (local or cloud)
-┌────────────────────────┐                    ┌─────────────────────────────────────┐
-│ ACTOR                  │                    │ LEARNER                             │
-│                        │   transitions +    │                                     │
-│  env.step() rollouts   │   episode stats    │  ┌──────────────┐  ┌─────────────┐  │
-│  with teleop           │ ─────────────────► │  │ replay buffer│  │ demo+intvn  │  │
-│  interventions         │   ZMQ, port 5588   │  │ (every step) │  │ buffer      │  │
-│                        │                    │  └───────┬──────┘  └──────┬──────┘  │
-│  policy inference      │                    │      50% │        50%     │         │
-│  on latest weights     │   weight broadcast │          ▼                ▼         │
-│                        │ ◄───────────────── │        SAC / RLPD updates           │
-│                        │   ZMQ, port 5589   │                                     │
-│                        │                    │  checkpoints, buffer dumps, CSVs    │
-└────────────────────────┘                    └─────────────────────────────────────┘
-```
+![Actor and learner](media/actor_learner.svg)
 
 Every environment step goes to the replay buffer, intervention steps additionally to the
 demo/intervention buffer, and each learner batch samples 50/50 from the two. The actor refreshes
